@@ -1,0 +1,13 @@
+
+# playbooks/xoa.yaml
+# Manage Xen Orchestra Appliance VMs
+
+- name: Configure xoa
+  hosts: xoa
+  vars:
+    ansible_user: vagrant
+
+  roles:
+    - {role: roles/xoa, when: xoa_server}
+    - {role: roles/nginx, when: xoa_server}
+    - {role: roles/ufw, when: xoa_server}

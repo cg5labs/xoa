@@ -1,0 +1,51 @@
+# roles/xoa/tasks/main.yml
+---
+- name: Update all packages to latest version
+  apt:
+    update_cache: yes
+    upgrade: dist
+    autoclean: yes
+    autoremove: yes
+  become: true
+
+- name: Ensure required OS base packages are installed
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items: "{{ xoa_server_pkgs }}"
+  become: true
+
+- name: Create forced symlink /data to /opt
+  file:
+    src: /data
+    dest: /opt
+    state: link
+    force: yes
+  become: true
+
+- name: Copy xo_install.sh script to /tmp and set permissions
+  copy:
+    src: xo_install.sh
+    dest: /tmp/xo_install.sh
+    mode: '0755'
+  become: true
+
+- name: "Run xo_install.sh script as root"
+  command: /tmp/xo_install.sh
+  become: true
+
+- name: "Install xo-cli if install_xo_cli is true"
+  #command: npm install -g @xen-orchestra/cli
+  command: npm install -g xo-cli
+  become: true
+  when: install_xo_cli
+
+- name: "Reboot xoa server"
+  reboot:
+    reboot_timeout: 300
+    test_command: uptime
+  become: true
+
+- name: Import user creation tasks
+  import_tasks: users.yml
+  when: install_xo_cli
