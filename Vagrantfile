@@ -2,6 +2,14 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+  nginx_tls_dir = "roles/nginx/files"
+  nginx_tls_key = "#{nginx_tls_dir}/nginx.key"
+  nginx_tls_csr = "#{nginx_tls_dir}/nginx.csr"
+  nginx_tls_cert = "#{nginx_tls_dir}/nginx.crt"
+  nginx_tls_subject = "/CN=localhost"
+  nginx_tls_days = 3650
+  nginx_tls_key_bits = 2048
+
   config.vm.box = "debian/bookworm64"
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.network "forwarded_port", guest: 443, host: 8443
@@ -17,10 +25,22 @@ Vagrant.configure("2") do |config|
     trigger.run = {
       inline: <<~SHELL
         /bin/bash -ec '
-          mkdir -p roles/nginx/files
-          openssl genrsa -out roles/nginx/files/nginx.key 2048
-          openssl req -new -key roles/nginx/files/nginx.key -out roles/nginx/files/nginx.csr -subj "/CN=localhost"
-          openssl x509 -req -days 3650 -in roles/nginx/files/nginx.csr -signkey roles/nginx/files/nginx.key -out roles/nginx/files/nginx.crt
+          tls_dir="#{nginx_tls_dir}"
+          tls_key="#{nginx_tls_key}"
+          tls_csr="#{nginx_tls_csr}"
+          tls_cert="#{nginx_tls_cert}"
+          tls_subject="#{nginx_tls_subject}"
+          tls_days="#{nginx_tls_days}"
+          tls_key_bits="#{nginx_tls_key_bits}"
+
+          if [ -s "$tls_key" ] && [ -s "$tls_cert" ]; then
+            exit 0
+          fi
+
+          mkdir -p "$tls_dir"
+          openssl genrsa -out "$tls_key" "$tls_key_bits"
+          openssl req -new -key "$tls_key" -out "$tls_csr" -subj "$tls_subject"
+          openssl x509 -req -days "$tls_days" -in "$tls_csr" -signkey "$tls_key" -out "$tls_cert"
         '
       SHELL
     }
