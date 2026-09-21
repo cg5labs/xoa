@@ -15,6 +15,7 @@
   with_items: "{{ xoa_server_pkgs }}"
   become: true
 
+#TODO: Make this configurable via variable
 - name: Create forced symlink /data to /opt
   file:
     src: /data
@@ -23,15 +24,46 @@
     force: yes
   become: true
 
-- name: Copy xo_install.sh script to /tmp and set permissions
-  copy:
-    src: xo_install.sh
-    dest: /tmp/xo_install.sh
+- name: Expand custom templates to root home
+  template:
+    src: "{{ item.src }}"
+    dest: "/root/{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "{{ item.mode }}"
+  loop:
+    - src: custom.config.toml.j2
+      dest: custom.config.toml
+      mode: '0644'
+    - src: xo_install.sh.j2
+      dest: xo_install.sh
+      mode: '0755'
+  become: true
+
+- name: Ensure xo-server config directory exists
+  file:
+    path: /etc/xo-server
+    state: directory
+    owner: root
+    group: root
     mode: '0755'
   become: true
 
+  # COPY custom.config.toml to /etc/xo-server/config.toml
+- name: "Copy custom.config.toml to /etc/xo-server/config.toml"
+  copy:
+    src: /root/custom.config.toml
+    dest: /etc/xo-server/config.toml
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
 - name: "Run xo_install.sh script as root"
-  command: /tmp/xo_install.sh
+  command: /root/xo_install.sh
+  args:
+    chdir: /root
   become: true
 
 - name: "Install xo-cli if install_xo_cli is true"
@@ -46,6 +78,17 @@
     test_command: uptime
   become: true
 
+- name: Install and start nginx before user creation
+  include_role:
+    name: roles/nginx
+  when:
+    - install_xo_cli
+    - xo_cli_email | default('') | length > 0
+    - xo_cli_password | default('') | length > 0
+
 - name: Import user creation tasks
   import_tasks: users.yml
-  when: install_xo_cli
+  when:
+    - install_xo_cli
+    - xo_cli_email | default('') | length > 0
+    - xo_cli_password | default('') | length > 0

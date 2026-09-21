@@ -8,31 +8,22 @@
     timeout: 300
     delay: 0
 
-- name: Register xo-cli with XO server (if credentials provided)
+- name: Register xo-cli with XO server
   shell: >-
     xo-cli register --allowUnauthorized {{ xo_cli_url }} {{ xo_cli_default_email }} {{ xo_cli_default_password }}
   become: true
-  when:
-  - xo_cli_email
-  - xo_cli_password
-  - xo_cli_allow_unauthorized
+  when: xo_cli_allow_unauthorized | default(false)
 
-- name: Create operator user with xo-cli (if credentials provided)
+- name: Create operator user with xo-cli
   shell: >-
     xo-cli user.create email={{ xo_cli_email }} password={{ xo_cli_password }} permission={{ xo_cli_permission }}
   become: true
-  when:
-  - xo_cli_email
-  - xo_cli_password
 
 - name: Re-register xo-cli
   shell: >-
     xo-cli register --allowUnauthorized {{ xo_cli_url }} {{ xo_cli_email }} {{ xo_cli_password }}
   become: true
-  when:
-    - xo_cli_email
-    - xo_cli_password
-    - xo_cli_allow_unauthorized
+  when: xo_cli_allow_unauthorized | default(false)
 
 - name: Import admin cleanup tasks
   import_tasks: admin-cleanup.yml

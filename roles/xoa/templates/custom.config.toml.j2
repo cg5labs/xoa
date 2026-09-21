@@ -1,0 +1,13 @@
+# roles/xoa/templates/custom.config.toml.j2
+#
+[http]
+[http.cookies]
+[[http.listen]]
+port = {{ xo_server_port }}
+[http.mounts]
+[http.proxies]
+[redis]
+[remoteOptions]
+[plugins]
+[mcp]
+enabled = false
