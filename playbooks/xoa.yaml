@@ -7,6 +7,9 @@
   vars:
     ansible_user: vagrant
     xoa_server: true
+    nginx_enable_proxy: true
+    nginx_listen_port: 443
+    nginx_proxy_backend_url: http://127.0.0.1:8000
 
   roles:
     - {role: roles/xoa, when: xoa_server}
