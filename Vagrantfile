@@ -17,10 +17,47 @@ Vagrant.configure("2") do |config|
     trigger.run = {
       inline: <<~SHELL
         /bin/bash -ec '
-          mkdir -p ansible/roles/nginx/files
-          openssl genrsa -out ansible/roles/nginx/files/nginx.key 2048
-          openssl req -new -key ansible/roles/nginx/files/nginx.key -out ansible/roles/nginx/files/nginx.csr -subj "/CN=localhost"
-          openssl x509 -req -days 3650 -in ansible/roles/nginx/files/nginx.csr -signkey ansible/roles/nginx/files/nginx.key -out ansible/roles/nginx/files/nginx.crt
+          mkdir -p roles/nginx/files
+          openssl genrsa -out roles/nginx/files/nginx.key 2048
+          openssl req -new -key roles/nginx/files/nginx.key -out roles/nginx/files/nginx.csr -subj "/CN=localhost"
+          openssl x509 -req -days 3650 -in roles/nginx/files/nginx.csr -signkey roles/nginx/files/nginx.key -out roles/nginx/files/nginx.crt
+        '
+      SHELL
+    }
+  end
+
+  # vagrant-libvirt implements forwarded ports as host-side SSH tunnels.
+  # The guest reboot during provisioning can drop that tunnel, so restore it after `up`.
+  config.trigger.after :up do |trigger|
+    trigger.name = "Restore HTTPS port forward"
+    trigger.run = {
+      inline: <<~SHELL
+        /bin/bash -ec '
+          if ! vagrant status --machine-readable default | awk -F, '"'"'$3 == "provider-name" && $4 == "libvirt" { found = 1 } END { exit !found }'"'"'; then
+            exit 0
+          fi
+
+          pid_file=.vagrant/machines/default/libvirt/pids/ssh_8443.pid
+          if [ -s "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+            exit 0
+          fi
+
+          mkdir -p "$(dirname "$pid_file")"
+          rm -f "$pid_file"
+
+          host=$(vagrant ssh-config default | awk "/HostName / { print \\$2 }")
+          user=$(vagrant ssh-config default | awk "/User / { print \\$2 }")
+          key=$(vagrant ssh-config default | awk "/IdentityFile / { print \\$2 }" | tr -d "\\"")
+
+          ssh -f -N \
+            -o ExitOnForwardFailure=yes \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -i "$key" \
+            -L 127.0.0.1:8443:127.0.0.1:443 \
+            "$user@$host"
+
+          pgrep -f "127.0.0.1:8443:127.0.0.1:443" | tail -n 1 > "$pid_file"
         '
       SHELL
     }
