@@ -3,11 +3,11 @@
 # Manage Xen Orchestra Appliance VMs
 
 - name: Configure xoa
-  hosts: xoa
+  hosts: default
   vars:
     ansible_user: vagrant
+    xoa_server: true
 
   roles:
     - {role: roles/xoa, when: xoa_server}
-    - {role: roles/nginx, when: xoa_server}
     - {role: roles/ufw, when: xoa_server}
