@@ -1,16 +1,8 @@
 # roles/nginx/templates/default.conf.j2
 server {
-    listen {{ nginx_listen_port }} ssl http2;
-    listen [::]:{{ nginx_listen_port }} ssl http2;
+    listen {{ nginx_listen_address }}:{{ nginx_listen_port }};
 
     server_name {{ nginx_server_name }};
-
-    # TLS Configuration
-    ssl_certificate {{ nginx_tls_certificate_path }};
-    ssl_certificate_key {{ nginx_tls_key_path }};
-    ssl_protocols {{ nginx_ssl_protocols }};
-    ssl_ciphers {{ nginx_ssl_ciphers }};
-    ssl_prefer_server_ciphers {{ nginx_ssl_prefer_server_ciphers }};
 
     # Logging
     access_log /var/log/nginx/access.log;
@@ -20,7 +12,6 @@ server {
     root {{ nginx_root }};
 
     location / {
-        try_files $uri $uri/ =404;
+        try_files $uri $uri/ =204;
     }
 }
-
